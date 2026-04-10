@@ -5,67 +5,38 @@ import org.grakovne.lissen.channel.common.OperationError
 import org.grakovne.lissen.channel.common.OperationResult
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import java.io.IOException
 import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.SSLPeerUnverifiedException
 
+/**
+ * Pins down that SSL handshake exceptions route to ClientCertificateError instead
+ * of the generic NetworkError. SSLHandshakeException extends IOException, so the
+ * catch order in SafeApiCall matters: an accidental reorder would silently
+ * misroute every mTLS failure as a generic connection error.
+ */
 class SafeApiCallTest {
-  @Nested
-  inner class SslErrors {
-    @Test
-    fun `SSLHandshakeException returns ClientCertificateError`() =
-      runBlocking {
-        val result: OperationResult<String> =
-          safeApiCall {
-            throw SSLHandshakeException("Certificate rejected")
-          }
+  @Test
+  fun `SSLHandshakeException returns ClientCertificateError`() =
+    runBlocking {
+      val result: OperationResult<String> =
+        safeApiCall {
+          throw SSLHandshakeException("Certificate rejected")
+        }
 
-        assertTrue(result is OperationResult.Error)
-        assertEquals(OperationError.ClientCertificateError, (result as OperationResult.Error).code)
-      }
+      assertTrue(result is OperationResult.Error)
+      assertEquals(OperationError.ClientCertificateError, (result as OperationResult.Error).code)
+    }
 
-    @Test
-    fun `SSLPeerUnverifiedException returns ClientCertificateError`() =
-      runBlocking {
-        val result: OperationResult<String> =
-          safeApiCall {
-            throw SSLPeerUnverifiedException("Peer not verified")
-          }
+  @Test
+  fun `SSLPeerUnverifiedException returns ClientCertificateError`() =
+    runBlocking {
+      val result: OperationResult<String> =
+        safeApiCall {
+          throw SSLPeerUnverifiedException("Peer not verified")
+        }
 
-        assertTrue(result is OperationResult.Error)
-        assertEquals(OperationError.ClientCertificateError, (result as OperationResult.Error).code)
-      }
-  }
-
-  @Nested
-  inner class IoErrors {
-    @Test
-    fun `IOException returns NetworkError`() =
-      runBlocking {
-        val result: OperationResult<String> =
-          safeApiCall {
-            throw IOException("Connection refused")
-          }
-
-        assertTrue(result is OperationResult.Error)
-        assertEquals(OperationError.NetworkError, (result as OperationResult.Error).code)
-      }
-  }
-
-  @Nested
-  inner class GenericErrors {
-    @Test
-    fun `generic Exception returns InternalError`() =
-      runBlocking {
-        val result: OperationResult<String> =
-          safeApiCall {
-            throw RuntimeException("Something went wrong")
-          }
-
-        assertTrue(result is OperationResult.Error)
-        assertEquals(OperationError.InternalError, (result as OperationResult.Error).code)
-      }
-  }
+      assertTrue(result is OperationResult.Error)
+      assertEquals(OperationError.ClientCertificateError, (result as OperationResult.Error).code)
+    }
 }

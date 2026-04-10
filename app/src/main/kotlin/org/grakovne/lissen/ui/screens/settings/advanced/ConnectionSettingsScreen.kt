@@ -1,7 +1,7 @@
 package org.grakovne.lissen.ui.screens.settings.advanced
 
-import android.app.Activity
 import android.security.KeyChain
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -25,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -46,8 +45,7 @@ fun ConnectionSettingsScreen(
   val host by viewModel.host.observeAsState()
   val bypassSsl by viewModel.bypassSsl.observeAsState(false)
   val clientCertAlias by viewModel.clientCertAlias.observeAsState(null)
-  val context = LocalContext.current
-  val activity = context as? Activity
+  val activity = LocalActivity.current
 
   Scaffold(
     topBar = {

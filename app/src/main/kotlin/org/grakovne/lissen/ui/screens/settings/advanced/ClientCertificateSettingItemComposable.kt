@@ -64,14 +64,14 @@ fun ClientCertificateSettingItemComposable(
       IconButton(onClick = { onClear() }) {
         Icon(
           imageVector = Icons.Outlined.Close,
-          contentDescription = "Clear",
+          contentDescription = stringResource(R.string.settings_screen_client_cert_clear_action),
         )
       }
     } else {
       IconButton(onClick = { onSelect() }) {
         Icon(
           imageVector = Icons.Outlined.Security,
-          contentDescription = "Select",
+          contentDescription = stringResource(R.string.settings_screen_client_cert_select_action),
         )
       }
     }

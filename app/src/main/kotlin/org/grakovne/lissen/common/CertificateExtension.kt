@@ -154,9 +154,9 @@ internal class ClientCertKeyManager(
     engine: SSLEngine?,
   ): String? = if (isReady) alias else null
 
-  override fun getCertificateChain(alias: String?): Array<X509Certificate>? = certChain
+  override fun getCertificateChain(alias: String?): Array<X509Certificate>? = if (alias == this.alias) certChain else null
 
-  override fun getPrivateKey(alias: String?): PrivateKey? = privateKey
+  override fun getPrivateKey(alias: String?): PrivateKey? = if (alias == this.alias) privateKey else null
 
   override fun getClientAliases(
     keyType: String?,
