@@ -24,7 +24,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -33,6 +32,7 @@ import org.grakovne.lissen.content.LissenMediaProvider
 import org.grakovne.lissen.lib.domain.Bookmark
 import org.grakovne.lissen.lib.domain.CurrentEpisodeTimerOption
 import org.grakovne.lissen.lib.domain.DetailedItem
+import org.grakovne.lissen.lib.domain.DetailedItem.Companion.same
 import org.grakovne.lissen.lib.domain.DurationTimerOption
 import org.grakovne.lissen.lib.domain.SeekTimeOption
 import org.grakovne.lissen.lib.domain.TimerOption
@@ -441,7 +441,9 @@ class MediaRepository
     }
 
     private fun startPreparingPlayback(book: DetailedItem) {
-      if (_playingBook.value != book) {
+      val sameBook = _playingBook.value?.same(book) ?: false
+
+      if (sameBook.not()) {
         _totalPosition.postValue(0.0)
         _isPlaying.postValue(false)
 
