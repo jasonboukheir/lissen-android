@@ -13,6 +13,7 @@ import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.KeyManager
 import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLEngine
 import javax.net.ssl.TrustManager
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.TrustManagerFactory.getInstance
@@ -94,41 +95,84 @@ private fun buildKeyManagers(
   alias: String?,
 ): Array<KeyManager>? {
   if (context == null || alias == null) return null
-
-  return try {
-    val privateKey = KeyChain.getPrivateKey(context, alias) ?: return null
-    val certChain = KeyChain.getCertificateChain(context, alias) ?: return null
-    arrayOf(ClientCertKeyManager(alias, privateKey, certChain))
-  } catch (ex: Exception) {
-    Timber.e(ex, "Failed to load client certificate for alias: $alias")
-    null
-  }
+  val appContext = context.applicationContext
+  return arrayOf(
+    ClientCertKeyManager(
+      alias = alias,
+      privateKeyLoader = {
+        try {
+          KeyChain.getPrivateKey(appContext, alias).also { key ->
+            if (key == null) {
+              Timber.w("KeyChain.getPrivateKey returned null for alias: $alias")
+            } else {
+              Timber.d("Loaded private key for alias: $alias")
+            }
+          }
+        } catch (ex: Exception) {
+          Timber.e(ex, "Failed to load private key for alias: $alias")
+          null
+        }
+      },
+      certChainLoader = {
+        try {
+          KeyChain.getCertificateChain(appContext, alias).also { chain ->
+            if (chain == null) {
+              Timber.w("KeyChain.getCertificateChain returned null for alias: $alias")
+            } else {
+              Timber.d("Loaded cert chain (${chain.size} cert(s)) for alias: $alias")
+            }
+          }
+        } catch (ex: Exception) {
+          Timber.e(ex, "Failed to load cert chain for alias: $alias")
+          null
+        }
+      },
+    ),
+  )
 }
 
 internal class ClientCertKeyManager(
   private val alias: String,
-  private val privateKey: PrivateKey,
-  private val certChain: Array<X509Certificate>,
+  privateKeyLoader: () -> PrivateKey?,
+  certChainLoader: () -> Array<X509Certificate>?,
 ) : X509ExtendedKeyManager() {
+  private val privateKey: PrivateKey? by lazy { privateKeyLoader() }
+  private val certChain: Array<X509Certificate>? by lazy { certChainLoader() }
+
+  private val isReady: Boolean
+    get() = privateKey != null && certChain != null
+
   override fun chooseClientAlias(
     keyType: Array<out String>?,
     issuers: Array<out Principal>?,
     socket: Socket?,
-  ): String = alias
+  ): String? = if (isReady) alias else null
 
-  override fun getCertificateChain(alias: String?): Array<X509Certificate> = certChain
+  override fun chooseEngineClientAlias(
+    keyType: Array<out String>?,
+    issuers: Array<out Principal>?,
+    engine: SSLEngine?,
+  ): String? = if (isReady) alias else null
 
-  override fun getPrivateKey(alias: String?): PrivateKey = privateKey
+  override fun getCertificateChain(alias: String?): Array<X509Certificate>? = certChain
+
+  override fun getPrivateKey(alias: String?): PrivateKey? = privateKey
 
   override fun getClientAliases(
     keyType: String?,
     issuers: Array<out Principal>?,
-  ): Array<String> = arrayOf(alias)
+  ): Array<String>? = if (isReady) arrayOf(alias) else null
 
   override fun chooseServerAlias(
     keyType: String?,
     issuers: Array<out Principal>?,
     socket: Socket?,
+  ): String? = null
+
+  override fun chooseEngineServerAlias(
+    keyType: String?,
+    issuers: Array<out Principal>?,
+    engine: SSLEngine?,
   ): String? = null
 
   override fun getServerAliases(
