@@ -35,3 +35,6 @@ google-services.json
 
 # Schemas
 app/schemas
+
+# Claude Code
+.claude/
